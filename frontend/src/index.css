@@ -366,3 +366,41 @@ tbody tr:last-child td {
   background: #bee3f8;
   color: #2c5282;
 }
+
+.inline-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #667eea;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+}
+
+.inline-input:focus {
+  outline: none;
+  border-color: #5568d3;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.editing-row {
+  background: #f0f4ff !important;
+}
+
+.new-row {
+  background: #f7fcf0 !important;
+}
+
+.new-filament-inline {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f0f4ff;
+  border-radius: 8px;
+  border: 2px dashed #667eea;
+}
+
+.new-filament-inline h4 {
+  margin: 0 0 15px 0;
+  color: #667eea;
+  font-size: 14px;
+}

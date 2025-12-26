@@ -134,11 +134,12 @@ function InventoryTab() {
   )
 }
 
-// Vendors Tab
+// Vendors Tab with inline editing
 function VendorsTab() {
   const [vendors, setVendors] = useState([])
-  const [showModal, setShowModal] = useState(false)
-  const [editingVendor, setEditingVendor] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [isAdding, setIsAdding] = useState(false)
+  const [formData, setFormData] = useState({ name: '', notes: '' })
 
   useEffect(() => {
     loadVendors()
@@ -151,6 +152,33 @@ function VendorsTab() {
     } catch (error) {
       console.error('Error loading vendors:', error)
     }
+  }
+
+  const handleEdit = (vendor) => {
+    setEditingId(vendor.id)
+    setFormData({ name: vendor.name, notes: vendor.notes })
+  }
+
+  const handleSave = async (id) => {
+    try {
+      if (id === 'new') {
+        await api.createVendor(formData)
+        setIsAdding(false)
+      } else {
+        await api.updateVendor(id, formData)
+        setEditingId(null)
+      }
+      setFormData({ name: '', notes: '' })
+      loadVendors()
+    } catch (error) {
+      alert('Error saving vendor: ' + error.response?.data?.detail)
+    }
+  }
+
+  const handleCancel = () => {
+    setEditingId(null)
+    setIsAdding(false)
+    setFormData({ name: '', notes: '' })
   }
 
   const handleDelete = async (id) => {
@@ -168,7 +196,7 @@ function VendorsTab() {
     <div>
       <div className="toolbar">
         <h2>Vendors</h2>
-        <button className="btn btn-primary" onClick={() => {setShowModal(true); setEditingVendor(null)}}>
+        <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding || editingId}>
           + Add Vendor
         </button>
       </div>
@@ -184,86 +212,95 @@ function VendorsTab() {
           </thead>
           <tbody>
             {vendors.map(vendor => (
-              <tr key={vendor.id}>
-                <td><strong>{vendor.name}</strong></td>
-                <td>{vendor.notes}</td>
+              <tr key={vendor.id} className={editingId === vendor.id ? 'editing-row' : ''}>
+                <td>
+                  {editingId === vendor.id ? (
+                    <input
+                      className="inline-input"
+                      value={formData.name}
+                      onChange={e => setFormData({...formData, name: e.target.value})}
+                      autoFocus
+                    />
+                  ) : (
+                    <strong>{vendor.name}</strong>
+                  )}
+                </td>
+                <td>
+                  {editingId === vendor.id ? (
+                    <input
+                      className="inline-input"
+                      value={formData.notes}
+                      onChange={e => setFormData({...formData, notes: e.target.value})}
+                    />
+                  ) : (
+                    vendor.notes
+                  )}
+                </td>
                 <td className="actions">
-                  <button className="btn btn-small btn-secondary" onClick={() => {setEditingVendor(vendor); setShowModal(true)}}>Edit</button>
-                  <button className="btn btn-small btn-danger" onClick={() => handleDelete(vendor.id)}>Delete</button>
+                  {editingId === vendor.id ? (
+                    <>
+                      <button className="btn btn-small btn-primary" onClick={() => handleSave(vendor.id)}>Save</button>
+                      <button className="btn btn-small btn-secondary" onClick={handleCancel}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn btn-small btn-secondary" onClick={() => handleEdit(vendor)} disabled={isAdding || editingId}>Edit</button>
+                      <button className="btn btn-small btn-danger" onClick={() => handleDelete(vendor.id)} disabled={isAdding || editingId}>Delete</button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
+            {isAdding && (
+              <tr className="editing-row new-row">
+                <td>
+                  <input
+                    className="inline-input"
+                    placeholder="Vendor name"
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    autoFocus
+                  />
+                </td>
+                <td>
+                  <input
+                    className="inline-input"
+                    placeholder="Notes"
+                    value={formData.notes}
+                    onChange={e => setFormData({...formData, notes: e.target.value})}
+                  />
+                </td>
+                <td className="actions">
+                  <button className="btn btn-small btn-primary" onClick={() => handleSave('new')}>Save</button>
+                  <button className="btn btn-small btn-secondary" onClick={handleCancel}>Cancel</button>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-
-      {showModal && (
-        <VendorModal
-          vendor={editingVendor}
-          onClose={() => {setShowModal(false); setEditingVendor(null)}}
-          onSave={() => {loadVendors(); setShowModal(false); setEditingVendor(null)}}
-        />
-      )}
     </div>
   )
 }
 
-function VendorModal({ vendor, onClose, onSave }) {
-  const [formData, setFormData] = useState({
-    name: vendor?.name || '',
-    notes: vendor?.notes || ''
-  })
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    try {
-      if (vendor) {
-        await api.updateVendor(vendor.id, formData)
-      } else {
-        await api.createVendor(formData)
-      }
-      onSave()
-    } catch (error) {
-      alert('Error saving vendor: ' + error.response?.data?.detail)
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>{vendor ? 'Edit Vendor' : 'Add Vendor'}</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Name *</label>
-            <input
-              required
-              value={formData.name}
-              onChange={e => setFormData({...formData, name: e.target.value})}
-            />
-          </div>
-          <div className="form-group">
-            <label>Notes</label>
-            <textarea
-              value={formData.notes}
-              onChange={e => setFormData({...formData, notes: e.target.value})}
-            />
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// Filaments Tab
+// Filaments Tab with inline editing
 function FilamentsTab() {
   const [filaments, setFilaments] = useState([])
   const [vendors, setVendors] = useState([])
-  const [showModal, setShowModal] = useState(false)
-  const [editingFilament, setEditingFilament] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [isAdding, setIsAdding] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    manufacturer: '',
+    line: '',
+    material: 'PLA',
+    product: '',
+    color: '',
+    feature: '',
+    date_added: new Date().toISOString().split('T')[0],
+    url: '',
+    notes: ''
+  })
 
   useEffect(() => {
     loadFilaments()
@@ -288,6 +325,48 @@ function FilamentsTab() {
     }
   }
 
+  const handleEdit = (filament) => {
+    setEditingId(filament.id)
+    setFormData(filament)
+  }
+
+  const handleSave = async (id) => {
+    try {
+      if (id === 'new') {
+        await api.createFilament(formData)
+        setIsAdding(false)
+      } else {
+        await api.updateFilament(id, formData)
+        setEditingId(null)
+      }
+      resetForm()
+      loadFilaments()
+    } catch (error) {
+      alert('Error saving filament: ' + error.response?.data?.detail)
+    }
+  }
+
+  const handleCancel = () => {
+    setEditingId(null)
+    setIsAdding(false)
+    resetForm()
+  }
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      manufacturer: '',
+      line: '',
+      material: 'PLA',
+      product: '',
+      color: '',
+      feature: '',
+      date_added: new Date().toISOString().split('T')[0],
+      url: '',
+      notes: ''
+    })
+  }
+
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this filament?')) {
       try {
@@ -303,7 +382,7 @@ function FilamentsTab() {
     <div>
       <div className="toolbar">
         <h2>Filaments</h2>
-        <button className="btn btn-primary" onClick={() => {setShowModal(true); setEditingFilament(null)}}>
+        <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding || editingId}>
           + Add Filament
         </button>
       </div>
@@ -314,7 +393,6 @@ function FilamentsTab() {
             <tr>
               <th>Name</th>
               <th>Manufacturer</th>
-              <th>Line</th>
               <th>Material</th>
               <th>Color</th>
               <th>Feature</th>
@@ -324,182 +402,185 @@ function FilamentsTab() {
           </thead>
           <tbody>
             {filaments.map(filament => (
-              <tr key={filament.id}>
-                <td><strong>{filament.name}</strong></td>
-                <td>{filament.manufacturer}</td>
-                <td>{filament.line}</td>
-                <td><span className="badge badge-info">{filament.material}</span></td>
-                <td>{filament.color}</td>
-                <td>{filament.feature}</td>
-                <td>{filament.date_added}</td>
+              <tr key={filament.id} className={editingId === filament.id ? 'editing-row' : ''}>
+                <td>
+                  {editingId === filament.id ? (
+                    <input
+                      className="inline-input"
+                      value={formData.name}
+                      onChange={e => setFormData({...formData, name: e.target.value})}
+                      autoFocus
+                    />
+                  ) : (
+                    <strong>{filament.name}</strong>
+                  )}
+                </td>
+                <td>
+                  {editingId === filament.id ? (
+                    <select
+                      className="inline-input"
+                      value={formData.manufacturer}
+                      onChange={e => setFormData({...formData, manufacturer: e.target.value})}
+                    >
+                      <option value="">Select...</option>
+                      {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                    </select>
+                  ) : (
+                    filament.manufacturer
+                  )}
+                </td>
+                <td>
+                  {editingId === filament.id ? (
+                    <select
+                      className="inline-input"
+                      value={formData.material}
+                      onChange={e => setFormData({...formData, material: e.target.value})}
+                    >
+                      <option value="PLA">PLA</option>
+                      <option value="PETG">PETG</option>
+                      <option value="ABS">ABS</option>
+                      <option value="TPU">TPU</option>
+                      <option value="Nylon">Nylon</option>
+                      <option value="ASA">ASA</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  ) : (
+                    <span className="badge badge-info">{filament.material}</span>
+                  )}
+                </td>
+                <td>
+                  {editingId === filament.id ? (
+                    <input
+                      className="inline-input"
+                      value={formData.color}
+                      onChange={e => setFormData({...formData, color: e.target.value})}
+                    />
+                  ) : (
+                    filament.color
+                  )}
+                </td>
+                <td>
+                  {editingId === filament.id ? (
+                    <input
+                      className="inline-input"
+                      value={formData.feature}
+                      onChange={e => setFormData({...formData, feature: e.target.value})}
+                    />
+                  ) : (
+                    filament.feature
+                  )}
+                </td>
+                <td>
+                  {editingId === filament.id ? (
+                    <input
+                      type="date"
+                      className="inline-input"
+                      value={formData.date_added}
+                      onChange={e => setFormData({...formData, date_added: e.target.value})}
+                    />
+                  ) : (
+                    filament.date_added
+                  )}
+                </td>
                 <td className="actions">
-                  <button className="btn btn-small btn-secondary" onClick={() => {setEditingFilament(filament); setShowModal(true)}}>Edit</button>
-                  <button className="btn btn-small btn-danger" onClick={() => handleDelete(filament.id)}>Delete</button>
+                  {editingId === filament.id ? (
+                    <>
+                      <button className="btn btn-small btn-primary" onClick={() => handleSave(filament.id)}>Save</button>
+                      <button className="btn btn-small btn-secondary" onClick={handleCancel}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn btn-small btn-secondary" onClick={() => handleEdit(filament)} disabled={isAdding || editingId}>Edit</button>
+                      <button className="btn btn-small btn-danger" onClick={() => handleDelete(filament.id)} disabled={isAdding || editingId}>Delete</button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
+            {isAdding && (
+              <tr className="editing-row new-row">
+                <td>
+                  <input
+                    className="inline-input"
+                    placeholder="Filament name"
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    autoFocus
+                  />
+                </td>
+                <td>
+                  <select
+                    className="inline-input"
+                    value={formData.manufacturer}
+                    onChange={e => setFormData({...formData, manufacturer: e.target.value})}
+                  >
+                    <option value="">Select...</option>
+                    {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                  </select>
+                </td>
+                <td>
+                  <select
+                    className="inline-input"
+                    value={formData.material}
+                    onChange={e => setFormData({...formData, material: e.target.value})}
+                  >
+                    <option value="PLA">PLA</option>
+                    <option value="PETG">PETG</option>
+                    <option value="ABS">ABS</option>
+                    <option value="TPU">TPU</option>
+                    <option value="Nylon">Nylon</option>
+                    <option value="ASA">ASA</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </td>
+                <td>
+                  <input
+                    className="inline-input"
+                    placeholder="Color"
+                    value={formData.color}
+                    onChange={e => setFormData({...formData, color: e.target.value})}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="inline-input"
+                    placeholder="Feature"
+                    value={formData.feature}
+                    onChange={e => setFormData({...formData, feature: e.target.value})}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="date"
+                    className="inline-input"
+                    value={formData.date_added}
+                    onChange={e => setFormData({...formData, date_added: e.target.value})}
+                  />
+                </td>
+                <td className="actions">
+                  <button className="btn btn-small btn-primary" onClick={() => handleSave('new')}>Save</button>
+                  <button className="btn btn-small btn-secondary" onClick={handleCancel}>Cancel</button>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-
-      {showModal && (
-        <FilamentModal
-          filament={editingFilament}
-          vendors={vendors}
-          onClose={() => {setShowModal(false); setEditingFilament(null)}}
-          onSave={() => {loadFilaments(); setShowModal(false); setEditingFilament(null)}}
-        />
-      )}
     </div>
   )
 }
 
-function FilamentModal({ filament, vendors, onClose, onSave }) {
-  const [formData, setFormData] = useState({
-    name: filament?.name || '',
-    manufacturer: filament?.manufacturer || '',
-    line: filament?.line || '',
-    material: filament?.material || 'PLA',
-    product: filament?.product || '',
-    color: filament?.color || '',
-    feature: filament?.feature || '',
-    date_added: filament?.date_added || new Date().toISOString().split('T')[0],
-    url: filament?.url || '',
-    notes: filament?.notes || ''
-  })
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    try {
-      if (filament) {
-        await api.updateFilament(filament.id, formData)
-      } else {
-        await api.createFilament(formData)
-      }
-      onSave()
-    } catch (error) {
-      alert('Error saving filament: ' + error.response?.data?.detail)
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>{filament ? 'Edit Filament' : 'Add Filament'}</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Name *</label>
-            <input
-              required
-              value={formData.name}
-              onChange={e => setFormData({...formData, name: e.target.value})}
-            />
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Manufacturer *</label>
-              <select
-                required
-                value={formData.manufacturer}
-                onChange={e => setFormData({...formData, manufacturer: e.target.value})}
-              >
-                <option value="">Select...</option>
-                {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Product Line</label>
-              <input
-                value={formData.line}
-                onChange={e => setFormData({...formData, line: e.target.value})}
-              />
-            </div>
-          </div>
-          <div className="form-row-3">
-            <div className="form-group">
-              <label>Material *</label>
-              <select
-                required
-                value={formData.material}
-                onChange={e => setFormData({...formData, material: e.target.value})}
-              >
-                <option value="PLA">PLA</option>
-                <option value="PETG">PETG</option>
-                <option value="ABS">ABS</option>
-                <option value="TPU">TPU</option>
-                <option value="Nylon">Nylon</option>
-                <option value="ASA">ASA</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Color</label>
-              <input
-                value={formData.color}
-                onChange={e => setFormData({...formData, color: e.target.value})}
-              />
-            </div>
-            <div className="form-group">
-              <label>Feature</label>
-              <input
-                value={formData.feature}
-                onChange={e => setFormData({...formData, feature: e.target.value})}
-                placeholder="e.g., Matte, Silk"
-              />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Product</label>
-              <input
-                value={formData.product}
-                onChange={e => setFormData({...formData, product: e.target.value})}
-              />
-            </div>
-            <div className="form-group">
-              <label>Date Added *</label>
-              <input
-                type="date"
-                required
-                value={formData.date_added}
-                onChange={e => setFormData({...formData, date_added: e.target.value})}
-              />
-            </div>
-          </div>
-          <div className="form-group">
-            <label>URL</label>
-            <input
-              type="url"
-              value={formData.url}
-              onChange={e => setFormData({...formData, url: e.target.value})}
-            />
-          </div>
-          <div className="form-group">
-            <label>Notes</label>
-            <textarea
-              value={formData.notes}
-              onChange={e => setFormData({...formData, notes: e.target.value})}
-            />
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// Purchases Tab
+// Purchases Tab with modal (complex nested structure) + ability to create new filament
 function PurchasesTab() {
   const [purchases, setPurchases] = useState([])
   const [filaments, setFilaments] = useState([])
+  const [vendors, setVendors] = useState([])
   const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     loadPurchases()
     loadFilaments()
+    loadVendors()
   }, [])
 
   const loadPurchases = async () => {
@@ -517,6 +598,15 @@ function PurchasesTab() {
       setFilaments(response.data)
     } catch (error) {
       console.error('Error loading filaments:', error)
+    }
+  }
+
+  const loadVendors = async () => {
+    try {
+      const response = await api.getVendors()
+      setVendors(response.data)
+    } catch (error) {
+      console.error('Error loading vendors:', error)
     }
   }
 
@@ -574,15 +664,16 @@ function PurchasesTab() {
       {showModal && (
         <PurchaseModal
           filaments={filaments}
+          vendors={vendors}
           onClose={() => setShowModal(false)}
-          onSave={() => {loadPurchases(); setShowModal(false)}}
+          onSave={() => {loadPurchases(); loadFilaments(); setShowModal(false)}}
         />
       )}
     </div>
   )
 }
 
-function PurchaseModal({ filaments, onClose, onSave }) {
+function PurchaseModal({ filaments, vendors, onClose, onSave }) {
   const [formData, setFormData] = useState({
     date_ordered: new Date().toISOString().split('T')[0],
     marketplace: '',
@@ -602,6 +693,8 @@ function PurchaseModal({ filaments, onClose, onSave }) {
       notes: ''
     }]
   })
+  const [showNewFilament, setShowNewFilament] = useState({})
+  const [newFilamentData, setNewFilamentData] = useState({})
 
   const addItem = () => {
     setFormData({
@@ -628,6 +721,44 @@ function PurchaseModal({ filaments, onClose, onSave }) {
 
   const removeItem = (idx) => {
     setFormData({...formData, items: formData.items.filter((_, i) => i !== idx)})
+  }
+
+  const handleCreateNewFilament = async (idx) => {
+    const data = newFilamentData[idx]
+    if (!data || !data.name || !data.manufacturer || !data.material) {
+      alert('Please fill in Name, Manufacturer, and Material for the new filament')
+      return
+    }
+
+    try {
+      const filamentData = {
+        name: data.name,
+        manufacturer: data.manufacturer,
+        material: data.material,
+        color: data.color || '',
+        feature: data.feature || '',
+        line: data.line || '',
+        product: data.product || '',
+        date_added: new Date().toISOString().split('T')[0],
+        url: '',
+        notes: ''
+      }
+      await api.createFilament(filamentData)
+
+      // Update the item with the new filament name
+      updateItem(idx, 'filament_name', data.name)
+
+      // Hide the form and clear data
+      setShowNewFilament({...showNewFilament, [idx]: false})
+      setNewFilamentData({...newFilamentData, [idx]: {}})
+
+      // Reload filaments
+      const response = await api.getFilaments()
+      // We'd need to pass setFilaments down or handle this differently
+      alert('Filament created! Please refresh to see it in the dropdown.')
+    } catch (error) {
+      alert('Error creating filament: ' + error.response?.data?.detail)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -680,7 +811,7 @@ function PurchaseModal({ filaments, onClose, onSave }) {
                 step="0.01"
                 required
                 value={formData.subtotal}
-                onChange={e => setFormData({...formData, subtotal: parseFloat(e.target.value)})}
+                onChange={e => setFormData({...formData, subtotal: parseFloat(e.target.value) || 0})}
               />
             </div>
             <div className="form-group">
@@ -689,7 +820,7 @@ function PurchaseModal({ filaments, onClose, onSave }) {
                 type="number"
                 step="0.01"
                 value={formData.tax}
-                onChange={e => setFormData({...formData, tax: parseFloat(e.target.value)})}
+                onChange={e => setFormData({...formData, tax: parseFloat(e.target.value) || 0})}
               />
             </div>
           </div>
@@ -706,15 +837,90 @@ function PurchaseModal({ filaments, onClose, onSave }) {
                 </div>
                 <div className="form-group">
                   <label>Filament *</label>
-                  <select
-                    required
-                    value={item.filament_name}
-                    onChange={e => updateItem(idx, 'filament_name', e.target.value)}
-                  >
-                    <option value="">Select...</option>
-                    {filaments.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                  </select>
+                  <div style={{display: 'flex', gap: '10px', alignItems: 'flex-start'}}>
+                    <select
+                      required={!showNewFilament[idx]}
+                      style={{flex: 1}}
+                      value={item.filament_name}
+                      onChange={e => updateItem(idx, 'filament_name', e.target.value)}
+                      disabled={showNewFilament[idx]}
+                    >
+                      <option value="">Select...</option>
+                      {filaments.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn btn-small btn-secondary"
+                      onClick={() => setShowNewFilament({...showNewFilament, [idx]: !showNewFilament[idx]})}
+                    >
+                      {showNewFilament[idx] ? 'Cancel' : '+ New'}
+                    </button>
+                  </div>
                 </div>
+
+                {showNewFilament[idx] && (
+                  <div className="new-filament-inline">
+                    <h4>New Filament</h4>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Name *</label>
+                        <input
+                          value={newFilamentData[idx]?.name || ''}
+                          onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), name: e.target.value}})}
+                          placeholder="e.g., Brand Name PLA Blue"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Manufacturer *</label>
+                        <select
+                          value={newFilamentData[idx]?.manufacturer || ''}
+                          onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), manufacturer: e.target.value}})}
+                        >
+                          <option value="">Select...</option>
+                          {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="form-row-3">
+                      <div className="form-group">
+                        <label>Material *</label>
+                        <select
+                          value={newFilamentData[idx]?.material || 'PLA'}
+                          onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), material: e.target.value}})}
+                        >
+                          <option value="PLA">PLA</option>
+                          <option value="PETG">PETG</option>
+                          <option value="ABS">ABS</option>
+                          <option value="TPU">TPU</option>
+                          <option value="Nylon">Nylon</option>
+                          <option value="ASA">ASA</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Color</label>
+                        <input
+                          value={newFilamentData[idx]?.color || ''}
+                          onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), color: e.target.value}})}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Feature</label>
+                        <input
+                          value={newFilamentData[idx]?.feature || ''}
+                          onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), feature: e.target.value}})}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-small btn-primary"
+                      onClick={() => handleCreateNewFilament(idx)}
+                    >
+                      Create & Select
+                    </button>
+                  </div>
+                )}
+
                 <div className="form-row-3">
                   <div className="form-group">
                     <label>Spools *</label>
@@ -722,7 +928,7 @@ function PurchaseModal({ filaments, onClose, onSave }) {
                       type="number"
                       required
                       value={item.spools}
-                      onChange={e => updateItem(idx, 'spools', parseInt(e.target.value))}
+                      onChange={e => updateItem(idx, 'spools', parseInt(e.target.value) || 0)}
                     />
                   </div>
                   <div className="form-group">
@@ -732,7 +938,7 @@ function PurchaseModal({ filaments, onClose, onSave }) {
                       step="0.01"
                       required
                       value={item.kg_per_spool}
-                      onChange={e => updateItem(idx, 'kg_per_spool', parseFloat(e.target.value))}
+                      onChange={e => updateItem(idx, 'kg_per_spool', parseFloat(e.target.value) || 0)}
                     />
                   </div>
                   <div className="form-group">
@@ -742,7 +948,7 @@ function PurchaseModal({ filaments, onClose, onSave }) {
                       step="0.01"
                       required
                       value={item.unit_price}
-                      onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value))}
+                      onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
                     />
                   </div>
                 </div>
@@ -779,12 +985,20 @@ function PurchaseModal({ filaments, onClose, onSave }) {
   )
 }
 
-// Spools Tab
+// Spools Tab with inline editing
 function SpoolsTab() {
   const [spools, setSpools] = useState([])
   const [filaments, setFilaments] = useState([])
-  const [showModal, setShowModal] = useState(false)
-  const [editingSpool, setEditingSpool] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [isAdding, setIsAdding] = useState(false)
+  const [formData, setFormData] = useState({
+    filament_name: '',
+    date_opened: new Date().toISOString().split('T')[0],
+    date_finished: '',
+    shelf: '',
+    remaining_kg: 1.0,
+    notes: ''
+  })
 
   useEffect(() => {
     loadSpools()
@@ -809,6 +1023,44 @@ function SpoolsTab() {
     }
   }
 
+  const handleEdit = (spool) => {
+    setEditingId(spool.id)
+    setFormData(spool)
+  }
+
+  const handleSave = async (id) => {
+    try {
+      if (id === 'new') {
+        await api.createSpool(formData)
+        setIsAdding(false)
+      } else {
+        await api.updateSpool(id, formData)
+        setEditingId(null)
+      }
+      resetForm()
+      loadSpools()
+    } catch (error) {
+      alert('Error saving spool: ' + error.response?.data?.detail)
+    }
+  }
+
+  const handleCancel = () => {
+    setEditingId(null)
+    setIsAdding(false)
+    resetForm()
+  }
+
+  const resetForm = () => {
+    setFormData({
+      filament_name: '',
+      date_opened: new Date().toISOString().split('T')[0],
+      date_finished: '',
+      shelf: '',
+      remaining_kg: 1.0,
+      notes: ''
+    })
+  }
+
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this spool?')) {
       try {
@@ -824,7 +1076,7 @@ function SpoolsTab() {
     <div>
       <div className="toolbar">
         <h2>Spools</h2>
-        <button className="btn btn-primary" onClick={() => {setShowModal(true); setEditingSpool(null)}}>
+        <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding || editingId}>
           + Open New Spool
         </button>
       </div>
@@ -844,11 +1096,58 @@ function SpoolsTab() {
           </thead>
           <tbody>
             {spools.map(spool => (
-              <tr key={spool.id}>
-                <td><strong>{spool.filament_name}</strong></td>
-                <td>{spool.date_opened}</td>
-                <td>{spool.remaining_kg.toFixed(2)} kg</td>
-                <td>{spool.shelf}</td>
+              <tr key={spool.id} className={editingId === spool.id ? 'editing-row' : ''}>
+                <td>
+                  {editingId === spool.id ? (
+                    <select
+                      className="inline-input"
+                      value={formData.filament_name}
+                      onChange={e => setFormData({...formData, filament_name: e.target.value})}
+                      disabled
+                    >
+                      <option value={spool.filament_name}>{spool.filament_name}</option>
+                    </select>
+                  ) : (
+                    <strong>{spool.filament_name}</strong>
+                  )}
+                </td>
+                <td>
+                  {editingId === spool.id ? (
+                    <input
+                      type="date"
+                      className="inline-input"
+                      value={formData.date_opened}
+                      onChange={e => setFormData({...formData, date_opened: e.target.value})}
+                    />
+                  ) : (
+                    spool.date_opened
+                  )}
+                </td>
+                <td>
+                  {editingId === spool.id ? (
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="inline-input"
+                      value={formData.remaining_kg}
+                      onChange={e => setFormData({...formData, remaining_kg: parseFloat(e.target.value) || 0})}
+                      autoFocus
+                    />
+                  ) : (
+                    `${spool.remaining_kg.toFixed(2)} kg`
+                  )}
+                </td>
+                <td>
+                  {editingId === spool.id ? (
+                    <input
+                      className="inline-input"
+                      value={formData.shelf}
+                      onChange={e => setFormData({...formData, shelf: e.target.value})}
+                    />
+                  ) : (
+                    spool.shelf
+                  )}
+                </td>
                 <td>
                   {spool.date_finished ?
                     <span className="badge badge-info">Finished</span> :
@@ -857,121 +1156,89 @@ function SpoolsTab() {
                       <span className="badge badge-warning">Empty</span>
                   }
                 </td>
-                <td>{spool.date_finished || '-'}</td>
+                <td>
+                  {editingId === spool.id ? (
+                    <input
+                      type="date"
+                      className="inline-input"
+                      value={formData.date_finished}
+                      onChange={e => setFormData({...formData, date_finished: e.target.value})}
+                    />
+                  ) : (
+                    spool.date_finished || '-'
+                  )}
+                </td>
                 <td className="actions">
-                  <button className="btn btn-small btn-secondary" onClick={() => {setEditingSpool(spool); setShowModal(true)}}>Update</button>
-                  <button className="btn btn-small btn-danger" onClick={() => handleDelete(spool.id)}>Delete</button>
+                  {editingId === spool.id ? (
+                    <>
+                      <button className="btn btn-small btn-primary" onClick={() => handleSave(spool.id)}>Save</button>
+                      <button className="btn btn-small btn-secondary" onClick={handleCancel}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn btn-small btn-secondary" onClick={() => handleEdit(spool)} disabled={isAdding || editingId}>Update</button>
+                      <button className="btn btn-small btn-danger" onClick={() => handleDelete(spool.id)} disabled={isAdding || editingId}>Delete</button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
+            {isAdding && (
+              <tr className="editing-row new-row">
+                <td>
+                  <select
+                    className="inline-input"
+                    value={formData.filament_name}
+                    onChange={e => setFormData({...formData, filament_name: e.target.value})}
+                    autoFocus
+                  >
+                    <option value="">Select filament...</option>
+                    {filaments.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                  </select>
+                </td>
+                <td>
+                  <input
+                    type="date"
+                    className="inline-input"
+                    value={formData.date_opened}
+                    onChange={e => setFormData({...formData, date_opened: e.target.value})}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="inline-input"
+                    value={formData.remaining_kg}
+                    onChange={e => setFormData({...formData, remaining_kg: parseFloat(e.target.value) || 0})}
+                    placeholder="kg"
+                  />
+                </td>
+                <td>
+                  <input
+                    className="inline-input"
+                    value={formData.shelf}
+                    onChange={e => setFormData({...formData, shelf: e.target.value})}
+                    placeholder="Shelf"
+                  />
+                </td>
+                <td>-</td>
+                <td>
+                  <input
+                    type="date"
+                    className="inline-input"
+                    value={formData.date_finished}
+                    onChange={e => setFormData({...formData, date_finished: e.target.value})}
+                  />
+                </td>
+                <td className="actions">
+                  <button className="btn btn-small btn-primary" onClick={() => handleSave('new')}>Save</button>
+                  <button className="btn btn-small btn-secondary" onClick={handleCancel}>Cancel</button>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
-      </div>
-
-      {showModal && (
-        <SpoolModal
-          spool={editingSpool}
-          filaments={filaments}
-          onClose={() => {setShowModal(false); setEditingSpool(null)}}
-          onSave={() => {loadSpools(); setShowModal(false); setEditingSpool(null)}}
-        />
-      )}
-    </div>
-  )
-}
-
-function SpoolModal({ spool, filaments, onClose, onSave }) {
-  const [formData, setFormData] = useState({
-    filament_name: spool?.filament_name || '',
-    date_opened: spool?.date_opened || new Date().toISOString().split('T')[0],
-    date_finished: spool?.date_finished || '',
-    shelf: spool?.shelf || '',
-    remaining_kg: spool?.remaining_kg || 1.0,
-    notes: spool?.notes || ''
-  })
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    try {
-      if (spool) {
-        await api.updateSpool(spool.id, formData)
-      } else {
-        await api.createSpool(formData)
-      }
-      onSave()
-    } catch (error) {
-      alert('Error saving spool: ' + error.response?.data?.detail)
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>{spool ? 'Update Spool' : 'Open New Spool'}</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Filament *</label>
-            <select
-              required
-              disabled={!!spool}
-              value={formData.filament_name}
-              onChange={e => setFormData({...formData, filament_name: e.target.value})}
-            >
-              <option value="">Select...</option>
-              {filaments.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-            </select>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Date Opened *</label>
-              <input
-                type="date"
-                required
-                value={formData.date_opened}
-                onChange={e => setFormData({...formData, date_opened: e.target.value})}
-              />
-            </div>
-            <div className="form-group">
-              <label>Date Finished</label>
-              <input
-                type="date"
-                value={formData.date_finished}
-                onChange={e => setFormData({...formData, date_finished: e.target.value})}
-              />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Remaining (kg) *</label>
-              <input
-                type="number"
-                step="0.01"
-                required
-                value={formData.remaining_kg}
-                onChange={e => setFormData({...formData, remaining_kg: parseFloat(e.target.value)})}
-              />
-            </div>
-            <div className="form-group">
-              <label>Shelf</label>
-              <input
-                value={formData.shelf}
-                onChange={e => setFormData({...formData, shelf: e.target.value})}
-                placeholder="e.g., A1LB"
-              />
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Notes</label>
-            <textarea
-              value={formData.notes}
-              onChange={e => setFormData({...formData, notes: e.target.value})}
-            />
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save</button>
-          </div>
-        </form>
       </div>
     </div>
   )
