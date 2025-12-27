@@ -203,6 +203,7 @@ function VendorsTab() {
       complete: async (results) => {
         let imported = 0
         let failed = 0
+        const errors = []
 
         for (const row of results.data) {
           try {
@@ -211,17 +212,32 @@ function VendorsTab() {
               notes: row['Notes'] || ''
             }
 
+            // Replace "-" with empty string
+            Object.keys(vendorData).forEach(key => {
+              if (vendorData[key] === '-') vendorData[key] = ''
+            })
+
             if (vendorData.name) {
               await api.createVendor(vendorData)
               imported++
             }
           } catch (error) {
             console.error('Error importing row:', row, error)
+            const errorMsg = error.response?.data?.detail || error.message
+            errors.push(`Row "${row['Name'] || row['Vendor']}": ${JSON.stringify(errorMsg)}`)
             failed++
           }
         }
 
-        alert(`Import complete!\nImported: ${imported}\nFailed: ${failed}`)
+        let message = `Import complete!\nImported: ${imported}\nFailed: ${failed}`
+        if (errors.length > 0) {
+          message += '\n\nErrors:\n' + errors.slice(0, 5).join('\n')
+          if (errors.length > 5) {
+            message += `\n... and ${errors.length - 5} more errors (check console for details)`
+          }
+          console.error('All import errors:', errors)
+        }
+        alert(message)
         loadVendors()
       },
       error: (error) => {
@@ -441,6 +457,7 @@ function FilamentsTab() {
       complete: async (results) => {
         let imported = 0
         let failed = 0
+        const errors = []
 
         for (const row of results.data) {
           try {
@@ -458,17 +475,37 @@ function FilamentsTab() {
               notes: row['Notes'] || ''
             }
 
+            // Replace "-" with empty string
+            Object.keys(filamentData).forEach(key => {
+              if (filamentData[key] === '-') filamentData[key] = ''
+            })
+
+            // Skip rows without a name or with invalid names (like just numbers)
+            if (!filamentData.name || filamentData.name.trim() === '' || /^\d+$/.test(filamentData.name.trim())) {
+              continue
+            }
+
             if (filamentData.name) {
               await api.createFilament(filamentData)
               imported++
             }
           } catch (error) {
             console.error('Error importing row:', row, error)
+            const errorMsg = error.response?.data?.detail || error.message
+            errors.push(`Row "${row['Filament name'] || row['Name']}": ${JSON.stringify(errorMsg)}`)
             failed++
           }
         }
 
-        alert(`Import complete!\nImported: ${imported}\nFailed: ${failed}`)
+        let message = `Import complete!\nImported: ${imported}\nFailed: ${failed}`
+        if (errors.length > 0) {
+          message += '\n\nErrors:\n' + errors.slice(0, 5).join('\n')
+          if (errors.length > 5) {
+            message += `\n... and ${errors.length - 5} more errors (check console for details)`
+          }
+          console.error('All import errors:', errors)
+        }
+        alert(message)
         loadFilaments()
       },
       error: (error) => {
@@ -907,6 +944,7 @@ function PurchasesTab() {
       complete: async (results) => {
         let imported = 0
         let failed = 0
+        const errors = []
 
         // Group rows by Order URL to create purchases with multiple items
         const purchaseMap = new Map()
@@ -928,7 +966,7 @@ function PurchasesTab() {
           }
 
           const purchase = purchaseMap.get(orderUrl)
-          purchase.items.push({
+          const item = {
             filament_name: row['Filament'] || '',
             seller: row['Seller'] || marketplace,
             date_ordered: row['Date ordered'] || new Date().toISOString().split('T')[0],
@@ -938,7 +976,16 @@ function PurchasesTab() {
             unit_price: parseFloat(row['Unit price']?.replace('$', '') || '0'),
             shelf: row['Shelf'] || '',
             notes: row['Notes'] || ''
+          }
+
+          // Replace "-" with empty string
+          Object.keys(item).forEach(key => {
+            if (item[key] === '-') item[key] = ''
           })
+
+          if (item.filament_name) {
+            purchase.items.push(item)
+          }
         }
 
         // Create purchases
@@ -949,12 +996,22 @@ function PurchasesTab() {
               imported++
             } catch (error) {
               console.error('Error importing purchase:', purchase, error)
+              const errorMsg = error.response?.data?.detail || error.message
+              errors.push(`Purchase "${purchase.marketplace} ${purchase.date_ordered}": ${JSON.stringify(errorMsg)}`)
               failed++
             }
           }
         }
 
-        alert(`Import complete!\nImported: ${imported} purchases\nFailed: ${failed}`)
+        let message = `Import complete!\nImported: ${imported} purchases\nFailed: ${failed}`
+        if (errors.length > 0) {
+          message += '\n\nErrors:\n' + errors.slice(0, 5).join('\n')
+          if (errors.length > 5) {
+            message += `\n... and ${errors.length - 5} more errors (check console for details)`
+          }
+          console.error('All import errors:', errors)
+        }
+        alert(message)
         loadPurchases()
       },
       error: (error) => {
@@ -1361,6 +1418,7 @@ function SpoolsTab() {
       complete: async (results) => {
         let imported = 0
         let failed = 0
+        const errors = []
 
         for (const row of results.data) {
           try {
@@ -1374,17 +1432,32 @@ function SpoolsTab() {
               notes: row['Notes'] || ''
             }
 
+            // Replace "-" with empty string
+            Object.keys(spoolData).forEach(key => {
+              if (spoolData[key] === '-') spoolData[key] = ''
+            })
+
             if (spoolData.filament_name) {
               await api.createSpool(spoolData)
               imported++
             }
           } catch (error) {
             console.error('Error importing row:', row, error)
+            const errorMsg = error.response?.data?.detail || error.message
+            errors.push(`Row "${row['Filament']}": ${JSON.stringify(errorMsg)}`)
             failed++
           }
         }
 
-        alert(`Import complete!\nImported: ${imported}\nFailed: ${failed}`)
+        let message = `Import complete!\nImported: ${imported}\nFailed: ${failed}`
+        if (errors.length > 0) {
+          message += '\n\nErrors:\n' + errors.slice(0, 5).join('\n')
+          if (errors.length > 5) {
+            message += `\n... and ${errors.length - 5} more errors (check console for details)`
+          }
+          console.error('All import errors:', errors)
+        }
+        alert(message)
         loadSpools()
       },
       error: (error) => {
