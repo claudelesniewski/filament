@@ -243,14 +243,23 @@ def get_inventory_summary(db: Session) -> List[dict]:
 
         unopened_count = total_spools - opened_spools_count
 
+        # Calculate average kg per spool for unopened spools
+        avg_kg_per_spool = db.query(
+            func.avg(models.PurchaseItem.kg_per_spool)
+        ).filter(models.PurchaseItem.filament_name == filament.name).scalar() or 0.0
+
+        # Total remaining = unopened spools at full weight + remaining in opened spools
+        unopened_kg = unopened_count * avg_kg_per_spool
+        total_remaining = remaining_opened + unopened_kg
+
         summaries.append({
             "filament_name": filament.name,
             "manufacturer": filament.manufacturer,
             "material": filament.material,
             "color": filament.color,
             "total_purchased_kg": float(purchased),
-            "total_opened_kg": float(purchased - remaining_opened) if opened_spools_count > 0 else 0.0,
-            "total_remaining_kg": float(remaining_opened),
+            "total_opened_kg": float(purchased - total_remaining) if total_remaining > 0 else float(purchased),
+            "total_remaining_kg": float(total_remaining),
             "unopened_spools": unopened_count,
             "opened_spools": opened_spools_count - finished_spools_count,
             "finished_spools": finished_spools_count,
