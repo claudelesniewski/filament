@@ -4,7 +4,7 @@ import Papa from 'papaparse'
 
 // Helper function to parse dates in various formats
 function parseDate(dateStr) {
-  if (!dateStr || dateStr === '-') return ''
+  if (!dateStr || dateStr === '-' || dateStr.trim() === '') return ''
 
   // If already in ISO format (YYYY-MM-DD), return as-is
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -447,7 +447,7 @@ function FilamentsTab() {
       const response = await api.getInventorySummary()
       const map = {}
       response.data.forEach(item => {
-        map[item.filament_name] = item.total_purchased_kg
+        map[item.filament_name] = item.total_remaining_kg
       })
       setInventoryMap(map)
     } catch (error) {
@@ -676,7 +676,7 @@ function FilamentsTab() {
               <th onClick={() => handleSort('material')}>Material {sortField === 'material' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
               <th onClick={() => handleSort('color')}>Color {sortField === 'color' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
               <th onClick={() => handleSort('feature')}>Feature {sortField === 'feature' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
-              <th onClick={() => handleSort('total_purchased_kg')}>Total Purchased (kg) {sortField === 'total_purchased_kg' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('total_purchased_kg')}>Kg Remaining {sortField === 'total_purchased_kg' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
               <th onClick={() => handleSort('date_added')}>Date Added {sortField === 'date_added' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
               <th>Actions</th>
             </tr>
