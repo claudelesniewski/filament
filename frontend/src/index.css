@@ -166,6 +166,7 @@ td {
   border-bottom: 1px solid #f0f0f0;
   color: #2d3748;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 tbody tr:hover {
