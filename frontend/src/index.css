@@ -151,30 +151,58 @@ thead {
 }
 
 th {
-  padding: 12px;
+  padding: 8px 10px;
   text-align: left;
   font-weight: 600;
   color: #4a5568;
   border-bottom: 2px solid #e0e0e0;
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+th:hover {
+  background: #edf2f7;
 }
 
 td {
-  padding: 12px;
+  padding: 6px 10px;
   border-bottom: 1px solid #f0f0f0;
   color: #2d3748;
   font-size: 14px;
   white-space: nowrap;
 }
 
+tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+tbody tr:nth-child(odd) {
+  background: white;
+}
+
 tbody tr:hover {
-  background: #f7fafc;
+  background: #f0f4ff !important;
 }
 
 tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* Purchases table: alternate by purchase, not by row */
+.purchase-even {
+  background: white !important;
+}
+
+.purchase-odd {
+  background: #f9fafb !important;
+}
+
+.purchase-even:hover,
+.purchase-odd:hover {
+  background: #f0f4ff !important;
 }
 
 .actions {
