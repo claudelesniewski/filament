@@ -377,6 +377,7 @@ function VendorsTab() {
 function FilamentsTab() {
   const [filaments, setFilaments] = useState([])
   const [vendors, setVendors] = useState([])
+  const [inventoryMap, setInventoryMap] = useState({})
   const [editingId, setEditingId] = useState(null)
   const [isAdding, setIsAdding] = useState(false)
   const [formData, setFormData] = useState({
@@ -395,6 +396,7 @@ function FilamentsTab() {
   useEffect(() => {
     loadFilaments()
     loadVendors()
+    loadInventory()
   }, [])
 
   const loadFilaments = async () => {
@@ -412,6 +414,19 @@ function FilamentsTab() {
       setVendors(response.data)
     } catch (error) {
       console.error('Error loading vendors:', error)
+    }
+  }
+
+  const loadInventory = async () => {
+    try {
+      const response = await api.getInventorySummary()
+      const map = {}
+      response.data.forEach(item => {
+        map[item.filament_name] = item.total_purchased_kg
+      })
+      setInventoryMap(map)
+    } catch (error) {
+      console.error('Error loading inventory:', error)
     }
   }
 
@@ -602,6 +617,7 @@ function FilamentsTab() {
               <th>Material</th>
               <th>Color</th>
               <th>Feature</th>
+              <th>Total Purchased (kg)</th>
               <th>Date Added</th>
               <th>Actions</th>
             </tr>
@@ -699,6 +715,9 @@ function FilamentsTab() {
                   )}
                 </td>
                 <td>
+                  <strong>{(inventoryMap[filament.name] || 0).toFixed(2)} kg</strong>
+                </td>
+                <td>
                   {editingId === filament.id ? (
                     <input
                       type="date"
@@ -794,6 +813,9 @@ function FilamentsTab() {
                   />
                 </td>
                 <td>
+                  <span style={{color: '#999'}}>-</span>
+                </td>
+                <td>
                   <input
                     type="date"
                     className="inline-input"
@@ -820,7 +842,7 @@ function PurchasesTab() {
   const [filaments, setFilaments] = useState([])
   const [vendors, setVendors] = useState([])
   const [isAdding, setIsAdding] = useState(false)
-  const [expandedId, setExpandedId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({
     date_ordered: new Date().toISOString().split('T')[0],
     marketplace: '',
@@ -885,6 +907,35 @@ function PurchasesTab() {
         alert('Error deleting purchase: ' + error.response?.data?.detail)
       }
     }
+  }
+
+  const handleEdit = (purchase) => {
+    setEditingId(purchase.id)
+    setFormData({
+      date_ordered: purchase.date_ordered,
+      marketplace: purchase.marketplace,
+      order_url: purchase.order_url,
+      subtotal: purchase.subtotal,
+      tax: purchase.tax,
+      notes: purchase.notes,
+      items: purchase.items.map(item => ({...item}))
+    })
+  }
+
+  const handleUpdate = async (id) => {
+    try {
+      await api.updatePurchase(id, formData)
+      setEditingId(null)
+      resetForm()
+      loadPurchases()
+    } catch (error) {
+      alert('Error updating purchase: ' + error.response?.data?.detail)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    resetForm()
   }
 
   const addItem = () => {
@@ -1119,15 +1170,46 @@ function PurchasesTab() {
             </tr>
           </thead>
           <tbody>
-            {purchases.map(purchase => (
-              purchase.items.map((item, idx) => (
-                <tr key={`${purchase.id}-${idx}`}>
+            {purchases.map(purchase => {
+              const isEditing = editingId === purchase.id
+              const displayItems = isEditing ? formData.items : purchase.items
+
+              return displayItems.map((item, idx) => (
+                <tr key={`${purchase.id}-${idx}`} className={isEditing ? 'editing-row' : ''}>
                   {idx === 0 && (
                     <>
-                      <td rowSpan={purchase.items.length}>{purchase.date_ordered}</td>
-                      <td rowSpan={purchase.items.length}>{purchase.marketplace}</td>
-                      <td rowSpan={purchase.items.length}>
-                        {purchase.order_url ? (
+                      <td rowSpan={displayItems.length}>
+                        {isEditing ? (
+                          <input
+                            type="date"
+                            className="inline-input"
+                            value={formData.date_ordered}
+                            onChange={e => setFormData({...formData, date_ordered: e.target.value})}
+                          />
+                        ) : (
+                          purchase.date_ordered
+                        )}
+                      </td>
+                      <td rowSpan={displayItems.length}>
+                        {isEditing ? (
+                          <input
+                            className="inline-input"
+                            value={formData.marketplace}
+                            onChange={e => setFormData({...formData, marketplace: e.target.value})}
+                          />
+                        ) : (
+                          purchase.marketplace
+                        )}
+                      </td>
+                      <td rowSpan={displayItems.length}>
+                        {isEditing ? (
+                          <input
+                            className="inline-input"
+                            value={formData.order_url}
+                            onChange={e => setFormData({...formData, order_url: e.target.value})}
+                            placeholder="URL"
+                          />
+                        ) : purchase.order_url ? (
                           <a href={purchase.order_url} target="_blank" rel="noopener noreferrer" style={{color: '#667eea', textDecoration: 'none'}}>🔗</a>
                         ) : (
                           '-'
@@ -1135,27 +1217,152 @@ function PurchasesTab() {
                       </td>
                     </>
                   )}
-                  <td>{item.filament_name}</td>
-                  <td>{item.seller}</td>
-                  <td>{item.spools}</td>
-                  <td>{item.kg_per_spool} kg</td>
-                  <td>${item.unit_price.toFixed(2)}</td>
-                  <td>{item.date_received || '-'}</td>
-                  <td>{item.shelf}</td>
+                  <td>
+                    {isEditing ? (
+                      <select
+                        className="inline-input"
+                        value={item.filament_name}
+                        onChange={e => updateItem(idx, 'filament_name', e.target.value)}
+                      >
+                        <option value="">Select...</option>
+                        {filaments.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                      </select>
+                    ) : (
+                      item.filament_name
+                    )}
+                  </td>
+                  <td>
+                    {isEditing ? (
+                      <input
+                        className="inline-input"
+                        value={item.seller}
+                        onChange={e => updateItem(idx, 'seller', e.target.value)}
+                      />
+                    ) : (
+                      item.seller
+                    )}
+                  </td>
+                  <td>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        className="inline-input"
+                        value={item.spools}
+                        onChange={e => updateItem(idx, 'spools', parseInt(e.target.value) || 0)}
+                      />
+                    ) : (
+                      item.spools
+                    )}
+                  </td>
+                  <td>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="inline-input"
+                        value={item.kg_per_spool}
+                        onChange={e => updateItem(idx, 'kg_per_spool', parseFloat(e.target.value) || 0)}
+                      />
+                    ) : (
+                      `${item.kg_per_spool} kg`
+                    )}
+                  </td>
+                  <td>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="inline-input"
+                        value={item.unit_price}
+                        onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
+                      />
+                    ) : (
+                      `$${item.unit_price.toFixed(2)}`
+                    )}
+                  </td>
+                  <td>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        className="inline-input"
+                        value={item.date_received}
+                        onChange={e => updateItem(idx, 'date_received', e.target.value)}
+                      />
+                    ) : (
+                      item.date_received || '-'
+                    )}
+                  </td>
+                  <td>
+                    {isEditing ? (
+                      <input
+                        className="inline-input"
+                        value={item.shelf}
+                        onChange={e => updateItem(idx, 'shelf', e.target.value)}
+                      />
+                    ) : (
+                      item.shelf
+                    )}
+                  </td>
                   {idx === 0 && (
                     <>
-                      <td rowSpan={purchase.items.length}>${purchase.subtotal.toFixed(2)}</td>
-                      <td rowSpan={purchase.items.length}>${purchase.tax.toFixed(2)}</td>
-                      <td rowSpan={purchase.items.length}><strong>${(purchase.subtotal + purchase.tax).toFixed(2)}</strong></td>
-                      <td rowSpan={purchase.items.length} style={{fontSize: '13px', color: '#718096'}}>{purchase.notes || '-'}</td>
-                      <td rowSpan={purchase.items.length} className="actions">
-                        <button className="btn btn-small btn-danger" onClick={() => handleDelete(purchase.id)} disabled={isAdding}>Delete</button>
+                      <td rowSpan={displayItems.length}>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="inline-input"
+                            value={formData.subtotal}
+                            onChange={e => setFormData({...formData, subtotal: parseFloat(e.target.value) || 0})}
+                          />
+                        ) : (
+                          `$${purchase.subtotal.toFixed(2)}`
+                        )}
+                      </td>
+                      <td rowSpan={displayItems.length}>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="inline-input"
+                            value={formData.tax}
+                            onChange={e => setFormData({...formData, tax: parseFloat(e.target.value) || 0})}
+                          />
+                        ) : (
+                          `$${purchase.tax.toFixed(2)}`
+                        )}
+                      </td>
+                      <td rowSpan={displayItems.length}>
+                        <strong>${isEditing ? (formData.subtotal + formData.tax).toFixed(2) : (purchase.subtotal + purchase.tax).toFixed(2)}</strong>
+                      </td>
+                      <td rowSpan={displayItems.length}>
+                        {isEditing ? (
+                          <input
+                            className="inline-input"
+                            value={formData.notes}
+                            onChange={e => setFormData({...formData, notes: e.target.value})}
+                          />
+                        ) : (
+                          <span style={{fontSize: '13px', color: '#718096'}}>{purchase.notes || '-'}</span>
+                        )}
+                      </td>
+                      <td rowSpan={displayItems.length} className="actions">
+                        {isEditing ? (
+                          <>
+                            <button className="btn btn-small btn-primary" onClick={() => handleUpdate(purchase.id)}>Save</button>
+                            <button className="btn btn-small btn-secondary" onClick={handleCancelEdit}>Cancel</button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="btn btn-small btn-secondary" onClick={() => handleEdit(purchase)} disabled={isAdding || editingId}>Edit</button>
+                            <button className="btn btn-small btn-danger" onClick={() => handleDelete(purchase.id)} disabled={isAdding || editingId}>Delete</button>
+                          </>
+                        )}
                       </td>
                     </>
                   )}
                 </tr>
               ))
-            ))}
+            })}
             {isAdding && formData.items.map((item, idx) => (
               <tr key={`new-${idx}`} className="editing-row new-row">
                 {idx === 0 && (
