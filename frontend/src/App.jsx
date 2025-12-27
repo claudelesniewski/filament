@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import * as api from './api'
+import Papa from 'papaparse'
 
 function App() {
   const [activeTab, setActiveTab] = useState('inventory')
@@ -192,13 +193,65 @@ function VendorsTab() {
     }
   }
 
+  const handleImportCSV = (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        let imported = 0
+        let failed = 0
+
+        for (const row of results.data) {
+          try {
+            const vendorData = {
+              name: row['Name'] || row['Vendor'] || '',
+              notes: row['Notes'] || ''
+            }
+
+            if (vendorData.name) {
+              await api.createVendor(vendorData)
+              imported++
+            }
+          } catch (error) {
+            console.error('Error importing row:', row, error)
+            failed++
+          }
+        }
+
+        alert(`Import complete!\nImported: ${imported}\nFailed: ${failed}`)
+        loadVendors()
+      },
+      error: (error) => {
+        alert('Error parsing CSV: ' + error.message)
+      }
+    })
+
+    // Reset input
+    event.target.value = ''
+  }
+
   return (
     <div>
       <div className="toolbar">
         <h2>Vendors</h2>
-        <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding || editingId}>
-          + Add Vendor
-        </button>
+        <div style={{display: 'flex', gap: '10px'}}>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            style={{display: 'none'}}
+            id="vendor-csv-input"
+          />
+          <label htmlFor="vendor-csv-input" className="btn btn-secondary">
+            Import CSV
+          </label>
+          <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding || editingId}>
+            + Add Vendor
+          </button>
+        </div>
       </div>
 
       <div className="table-container">
@@ -378,13 +431,74 @@ function FilamentsTab() {
     }
   }
 
+  const handleImportCSV = (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        let imported = 0
+        let failed = 0
+
+        for (const row of results.data) {
+          try {
+            // Map CSV headers to database fields (case-insensitive)
+            const filamentData = {
+              name: row['Filament name'] || row['Name'] || '',
+              manufacturer: row['Manufacturer'] || '',
+              line: row['Line'] || '',
+              material: row['Material'] || 'PLA',
+              product: row['Product'] || '',
+              color: row['Color'] || '',
+              feature: row['Feature'] || '',
+              date_added: row['Date added'] || new Date().toISOString().split('T')[0],
+              url: row['URL'] || '',
+              notes: row['Notes'] || ''
+            }
+
+            if (filamentData.name) {
+              await api.createFilament(filamentData)
+              imported++
+            }
+          } catch (error) {
+            console.error('Error importing row:', row, error)
+            failed++
+          }
+        }
+
+        alert(`Import complete!\nImported: ${imported}\nFailed: ${failed}`)
+        loadFilaments()
+      },
+      error: (error) => {
+        alert('Error parsing CSV: ' + error.message)
+      }
+    })
+
+    // Reset input
+    event.target.value = ''
+  }
+
   return (
     <div>
       <div className="toolbar">
         <h2>Filaments</h2>
-        <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding || editingId}>
-          + Add Filament
-        </button>
+        <div style={{display: 'flex', gap: '10px'}}>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            style={{display: 'none'}}
+            id="filament-csv-input"
+          />
+          <label htmlFor="filament-csv-input" className="btn btn-secondary">
+            Import CSV
+          </label>
+          <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding || editingId}>
+            + Add Filament
+          </button>
+        </div>
       </div>
 
       <div className="table-container">
@@ -783,13 +897,94 @@ function PurchasesTab() {
     setNewFilamentData({})
   }
 
+  const handleImportCSV = (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        let imported = 0
+        let failed = 0
+
+        // Group rows by Order URL to create purchases with multiple items
+        const purchaseMap = new Map()
+
+        for (const row of results.data) {
+          const orderUrl = row['Order'] || ''
+          const marketplace = row['Marketplace'] || ''
+
+          if (!purchaseMap.has(orderUrl)) {
+            purchaseMap.set(orderUrl, {
+              date_ordered: row['Date ordered'] || new Date().toISOString().split('T')[0],
+              marketplace: marketplace,
+              order_url: orderUrl,
+              subtotal: parseFloat(row['Order subtotal']?.replace('$', '') || '0'),
+              tax: parseFloat(row['Order tax']?.replace('$', '') || '0'),
+              notes: '',
+              items: []
+            })
+          }
+
+          const purchase = purchaseMap.get(orderUrl)
+          purchase.items.push({
+            filament_name: row['Filament'] || '',
+            seller: row['Seller'] || marketplace,
+            date_ordered: row['Date ordered'] || new Date().toISOString().split('T')[0],
+            date_received: row['Date received'] || '',
+            spools: parseInt(row['Spools'] || '1'),
+            kg_per_spool: parseFloat(row['KG/spool'] || '1.0'),
+            unit_price: parseFloat(row['Unit price']?.replace('$', '') || '0'),
+            shelf: row['Shelf'] || '',
+            notes: row['Notes'] || ''
+          })
+        }
+
+        // Create purchases
+        for (const purchase of purchaseMap.values()) {
+          if (purchase.items.length > 0 && purchase.items.some(item => item.filament_name)) {
+            try {
+              await api.createPurchase(purchase)
+              imported++
+            } catch (error) {
+              console.error('Error importing purchase:', purchase, error)
+              failed++
+            }
+          }
+        }
+
+        alert(`Import complete!\nImported: ${imported} purchases\nFailed: ${failed}`)
+        loadPurchases()
+      },
+      error: (error) => {
+        alert('Error parsing CSV: ' + error.message)
+      }
+    })
+
+    // Reset input
+    event.target.value = ''
+  }
+
   return (
     <div>
       <div className="toolbar">
         <h2>Purchases</h2>
-        <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding}>
-          + Add Purchase
-        </button>
+        <div style={{display: 'flex', gap: '10px'}}>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            style={{display: 'none'}}
+            id="purchase-csv-input"
+          />
+          <label htmlFor="purchase-csv-input" className="btn btn-secondary">
+            Import CSV
+          </label>
+          <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding}>
+            + Add Purchase
+          </button>
+        </div>
       </div>
 
       <div className="table-container">
@@ -1156,13 +1351,70 @@ function SpoolsTab() {
     }
   }
 
+  const handleImportCSV = (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        let imported = 0
+        let failed = 0
+
+        for (const row of results.data) {
+          try {
+            // Map CSV headers to database fields
+            const spoolData = {
+              filament_name: row['Filament'] || '',
+              date_opened: row['Date opened'] || new Date().toISOString().split('T')[0],
+              date_finished: row['Date finished'] || '',
+              shelf: row['Shelf'] || '',
+              remaining_kg: parseFloat(row['Remaining (kg)'] || row['Remaining'] || '1.0'),
+              notes: row['Notes'] || ''
+            }
+
+            if (spoolData.filament_name) {
+              await api.createSpool(spoolData)
+              imported++
+            }
+          } catch (error) {
+            console.error('Error importing row:', row, error)
+            failed++
+          }
+        }
+
+        alert(`Import complete!\nImported: ${imported}\nFailed: ${failed}`)
+        loadSpools()
+      },
+      error: (error) => {
+        alert('Error parsing CSV: ' + error.message)
+      }
+    })
+
+    // Reset input
+    event.target.value = ''
+  }
+
   return (
     <div>
       <div className="toolbar">
         <h2>Spools</h2>
-        <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding || editingId}>
-          + Open New Spool
-        </button>
+        <div style={{display: 'flex', gap: '10px'}}>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleImportCSV}
+            style={{display: 'none'}}
+            id="spool-csv-input"
+          />
+          <label htmlFor="spool-csv-input" className="btn btn-secondary">
+            Import CSV
+          </label>
+          <button className="btn btn-primary" onClick={() => setIsAdding(true)} disabled={isAdding || editingId}>
+            + Open New Spool
+          </button>
+        </div>
       </div>
 
       <div className="table-container">

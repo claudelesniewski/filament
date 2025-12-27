@@ -95,6 +95,8 @@ body {
   font-size: 14px;
   font-weight: 500;
   transition: all 0.3s;
+  display: inline-block;
+  text-decoration: none;
 }
 
 .btn-primary {
