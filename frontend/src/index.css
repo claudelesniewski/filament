@@ -404,3 +404,35 @@ tbody tr:last-child td {
   color: #667eea;
   font-size: 14px;
 }
+
+.purchase-items-row {
+  background: #fafbfc !important;
+}
+
+.purchase-items-inline {
+  padding: 20px;
+}
+
+.purchase-items-inline h3 {
+  margin: 0 0 15px 0;
+  color: #2d3748;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.purchase-item-inline {
+  background: white;
+  padding: 20px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.purchase-item-inline .purchase-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
