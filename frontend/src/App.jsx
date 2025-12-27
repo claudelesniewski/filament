@@ -2,6 +2,27 @@ import { useState, useEffect } from 'react'
 import * as api from './api'
 import Papa from 'papaparse'
 
+// Helper function to parse dates in various formats
+function parseDate(dateStr) {
+  if (!dateStr || dateStr === '-') return ''
+
+  // If already in ISO format (YYYY-MM-DD), return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr
+  }
+
+  // Try parsing with Date constructor (handles "20 Jan 2025", "Nov 21 2024", etc.)
+  const parsed = new Date(dateStr)
+  if (!isNaN(parsed.getTime())) {
+    const year = parsed.getFullYear()
+    const month = String(parsed.getMonth() + 1).padStart(2, '0')
+    const day = String(parsed.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  return ''
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('inventory')
 
@@ -470,7 +491,7 @@ function FilamentsTab() {
               product: row['Product'] || '',
               color: row['Color'] || '',
               feature: row['Feature'] || '',
-              date_added: row['Date added'] || new Date().toISOString().split('T')[0],
+              date_added: parseDate(row['Date added']) || new Date().toISOString().split('T')[0],
               url: row['URL'] || '',
               notes: row['Notes'] || ''
             }
@@ -955,7 +976,7 @@ function PurchasesTab() {
 
           if (!purchaseMap.has(orderUrl)) {
             purchaseMap.set(orderUrl, {
-              date_ordered: row['Date ordered'] || new Date().toISOString().split('T')[0],
+              date_ordered: parseDate(row['Date ordered']) || new Date().toISOString().split('T')[0],
               marketplace: marketplace,
               order_url: orderUrl,
               subtotal: parseFloat(row['Order subtotal']?.replace('$', '') || '0'),
@@ -969,8 +990,8 @@ function PurchasesTab() {
           const item = {
             filament_name: row['Filament'] || '',
             seller: row['Seller'] || marketplace,
-            date_ordered: row['Date ordered'] || new Date().toISOString().split('T')[0],
-            date_received: row['Date received'] || '',
+            date_ordered: parseDate(row['Date ordered']) || new Date().toISOString().split('T')[0],
+            date_received: parseDate(row['Date received']) || '',
             spools: parseInt(row['Spools'] || '1'),
             kg_per_spool: parseFloat(row['KG/spool'] || '1.0'),
             unit_price: parseFloat(row['Unit price']?.replace('$', '') || '0'),
@@ -1425,8 +1446,8 @@ function SpoolsTab() {
             // Map CSV headers to database fields
             const spoolData = {
               filament_name: row['Filament'] || '',
-              date_opened: row['Date opened'] || new Date().toISOString().split('T')[0],
-              date_finished: row['Date finished'] || '',
+              date_opened: parseDate(row['Date opened']) || new Date().toISOString().split('T')[0],
+              date_finished: parseDate(row['Date finished']) || '',
               shelf: row['Shelf'] || '',
               remaining_kg: parseFloat(row['Remaining (kg)'] || row['Remaining'] || '1.0'),
               notes: row['Notes'] || ''
