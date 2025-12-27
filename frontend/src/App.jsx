@@ -478,7 +478,34 @@ function FilamentsTab() {
       complete: async (results) => {
         let imported = 0
         let failed = 0
+        let vendorsCreated = 0
         const errors = []
+
+        // Load existing vendors
+        const existingVendorsResponse = await api.getVendors()
+        const existingVendorNames = new Set(existingVendorsResponse.data.map(v => v.name))
+
+        // Collect unique manufacturers from CSV
+        const uniqueManufacturers = new Set()
+        for (const row of results.data) {
+          const manufacturer = row['Manufacturer']
+          if (manufacturer && manufacturer !== '-' && manufacturer.trim() !== '') {
+            uniqueManufacturers.add(manufacturer)
+          }
+        }
+
+        // Create missing vendors
+        for (const manufacturer of uniqueManufacturers) {
+          if (!existingVendorNames.has(manufacturer)) {
+            try {
+              await api.createVendor({ name: manufacturer, notes: 'Auto-created from CSV import' })
+              existingVendorNames.add(manufacturer)
+              vendorsCreated++
+            } catch (error) {
+              console.error('Error creating vendor:', manufacturer, error)
+            }
+          }
+        }
 
         for (const row of results.data) {
           try {
@@ -518,7 +545,11 @@ function FilamentsTab() {
           }
         }
 
-        let message = `Import complete!\nImported: ${imported}\nFailed: ${failed}`
+        let message = `Import complete!\n`
+        if (vendorsCreated > 0) {
+          message += `Created ${vendorsCreated} new vendor(s)\n`
+        }
+        message += `Imported: ${imported} filament(s)\nFailed: ${failed}`
         if (errors.length > 0) {
           message += '\n\nErrors:\n' + errors.slice(0, 5).join('\n')
           if (errors.length > 5) {
@@ -528,6 +559,7 @@ function FilamentsTab() {
         }
         alert(message)
         loadFilaments()
+        loadVendors()
       },
       error: (error) => {
         alert('Error parsing CSV: ' + error.message)
