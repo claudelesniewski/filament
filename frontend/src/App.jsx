@@ -1133,7 +1133,7 @@ function PurchasesTab() {
             filament_name: row['Filament'] || '',
             seller: row['Seller'] || marketplace,
             date_ordered: parseDate(row['Date ordered']) || new Date().toISOString().split('T')[0],
-            date_received: parseDate(row['Date received']) || '',
+            date_received: parseDate(row['Date received']) || null,
             spools: parseInt(row['Spools'] || '1'),
             kg_per_spool: parseFloat(row['KG/spool'] || '1.0'),
             unit_price: parseFloat(row['Unit price']?.replace('$', '') || '0'),
@@ -1674,7 +1674,7 @@ function SpoolsTab() {
             const spoolData = {
               filament_name: row['Filament'] || '',
               date_opened: parseDate(row['Date opened']) || new Date().toISOString().split('T')[0],
-              date_finished: parseDate(row['Date finished']) || '',
+              date_finished: parseDate(row['Date finished']) || null,
               shelf: row['Shelf'] || '',
               remaining_kg: parseFloat(row['Remaining (kg)'] || row['Remaining'] || '1.0'),
               notes: row['Notes'] || ''
