@@ -831,151 +831,156 @@ function PurchasesTab() {
                 <tr className="purchase-items-row">
                   <td colSpan="7">
                     <div className="purchase-items-inline">
-                      <h3>Purchase Items</h3>
-                      {formData.items.map((item, idx) => (
-                        <div key={idx} className="purchase-item-inline">
-                          <div className="purchase-item-header">
-                            <strong>Item {idx + 1}</strong>
-                            {formData.items.length > 1 && (
-                              <button type="button" className="btn btn-small btn-danger" onClick={() => removeItem(idx)}>Remove</button>
-                            )}
-                          </div>
-
-                          <div className="form-group">
-                            <label>Filament *</label>
-                            <div style={{display: 'flex', gap: '10px', alignItems: 'flex-start'}}>
-                              <select
-                                required={!showNewFilament[idx]}
-                                style={{flex: 1}}
-                                value={item.filament_name}
-                                onChange={e => updateItem(idx, 'filament_name', e.target.value)}
-                                disabled={showNewFilament[idx]}
-                              >
-                                <option value="">Select...</option>
-                                {filaments.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                              </select>
-                              <button
-                                type="button"
-                                className="btn btn-small btn-secondary"
-                                onClick={() => setShowNewFilament({...showNewFilament, [idx]: !showNewFilament[idx]})}
-                              >
-                                {showNewFilament[idx] ? 'Cancel' : '+ New'}
-                              </button>
-                            </div>
-                          </div>
-
-                          {showNewFilament[idx] && (
-                            <div className="new-filament-inline">
-                              <h4>New Filament</h4>
-                              <div className="form-row">
-                                <div className="form-group">
-                                  <label>Name *</label>
+                      <div style={{marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <strong>Purchase Items ({formData.items.length})</strong>
+                        <button type="button" className="btn btn-small btn-secondary" onClick={addItem}>+ Add Item</button>
+                      </div>
+                      <table className="items-table">
+                        <thead>
+                          <tr>
+                            <th style={{width: '25%'}}>Filament</th>
+                            <th style={{width: '8%'}}>Spools</th>
+                            <th style={{width: '10%'}}>Kg/Spool</th>
+                            <th style={{width: '10%'}}>Price</th>
+                            <th style={{width: '12%'}}>Received</th>
+                            <th style={{width: '10%'}}>Shelf</th>
+                            <th style={{width: '80px'}}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.items.map((item, idx) => (
+                            <>
+                              <tr key={idx}>
+                                <td>
+                                  <div style={{display: 'flex', gap: '5px'}}>
+                                    <select
+                                      className="inline-input"
+                                      required={!showNewFilament[idx]}
+                                      style={{flex: 1, minWidth: 0}}
+                                      value={item.filament_name}
+                                      onChange={e => updateItem(idx, 'filament_name', e.target.value)}
+                                      disabled={showNewFilament[idx]}
+                                    >
+                                      <option value="">Select...</option>
+                                      {filaments.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                                    </select>
+                                    <button
+                                      type="button"
+                                      className="btn btn-small btn-secondary"
+                                      style={{whiteSpace: 'nowrap'}}
+                                      onClick={() => setShowNewFilament({...showNewFilament, [idx]: !showNewFilament[idx]})}
+                                    >
+                                      {showNewFilament[idx] ? '✕' : '+'}
+                                    </button>
+                                  </div>
+                                </td>
+                                <td>
                                   <input
-                                    value={newFilamentData[idx]?.name || ''}
-                                    onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), name: e.target.value}})}
-                                    placeholder="e.g., Brand Name PLA Blue"
+                                    type="number"
+                                    className="inline-input"
+                                    value={item.spools}
+                                    onChange={e => updateItem(idx, 'spools', parseInt(e.target.value) || 0)}
                                   />
-                                </div>
-                                <div className="form-group">
-                                  <label>Manufacturer *</label>
-                                  <select
-                                    value={newFilamentData[idx]?.manufacturer || ''}
-                                    onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), manufacturer: e.target.value}})}
-                                  >
-                                    <option value="">Select...</option>
-                                    {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
-                                  </select>
-                                </div>
-                              </div>
-                              <div className="form-row-3">
-                                <div className="form-group">
-                                  <label>Material *</label>
-                                  <select
-                                    value={newFilamentData[idx]?.material || 'PLA'}
-                                    onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), material: e.target.value}})}
-                                  >
-                                    <option value="PLA">PLA</option>
-                                    <option value="PETG">PETG</option>
-                                    <option value="ABS">ABS</option>
-                                    <option value="TPU">TPU</option>
-                                    <option value="Nylon">Nylon</option>
-                                    <option value="ASA">ASA</option>
-                                  </select>
-                                </div>
-                                <div className="form-group">
-                                  <label>Color</label>
+                                </td>
+                                <td>
                                   <input
-                                    value={newFilamentData[idx]?.color || ''}
-                                    onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), color: e.target.value}})}
+                                    type="number"
+                                    step="0.01"
+                                    className="inline-input"
+                                    value={item.kg_per_spool}
+                                    onChange={e => updateItem(idx, 'kg_per_spool', parseFloat(e.target.value) || 0)}
                                   />
-                                </div>
-                                <div className="form-group">
-                                  <label>Feature</label>
+                                </td>
+                                <td>
                                   <input
-                                    value={newFilamentData[idx]?.feature || ''}
-                                    onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), feature: e.target.value}})}
+                                    type="number"
+                                    step="0.01"
+                                    className="inline-input"
+                                    placeholder="0.00"
+                                    value={item.unit_price}
+                                    onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
                                   />
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                className="btn btn-small btn-primary"
-                                onClick={() => handleCreateNewFilament(idx)}
-                              >
-                                Create & Select
-                              </button>
-                            </div>
-                          )}
-
-                          <div className="form-row-3">
-                            <div className="form-group">
-                              <label>Spools *</label>
-                              <input
-                                type="number"
-                                value={item.spools}
-                                onChange={e => updateItem(idx, 'spools', parseInt(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label>Kg/Spool *</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={item.kg_per_spool}
-                                onChange={e => updateItem(idx, 'kg_per_spool', parseFloat(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label>Unit Price *</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={item.unit_price}
-                                onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
-                              />
-                            </div>
-                          </div>
-                          <div className="form-row">
-                            <div className="form-group">
-                              <label>Date Received</label>
-                              <input
-                                type="date"
-                                value={item.date_received}
-                                onChange={e => updateItem(idx, 'date_received', e.target.value)}
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label>Shelf</label>
-                              <input
-                                value={item.shelf}
-                                onChange={e => updateItem(idx, 'shelf', e.target.value)}
-                                placeholder="e.g., A1LB"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      <button type="button" className="btn btn-secondary" onClick={addItem}>+ Add Item</button>
+                                </td>
+                                <td>
+                                  <input
+                                    type="date"
+                                    className="inline-input"
+                                    value={item.date_received}
+                                    onChange={e => updateItem(idx, 'date_received', e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    className="inline-input"
+                                    value={item.shelf}
+                                    onChange={e => updateItem(idx, 'shelf', e.target.value)}
+                                    placeholder="A1"
+                                  />
+                                </td>
+                                <td>
+                                  {formData.items.length > 1 && (
+                                    <button type="button" className="btn btn-small btn-danger" onClick={() => removeItem(idx)}>✕</button>
+                                  )}
+                                </td>
+                              </tr>
+                              {showNewFilament[idx] && (
+                                <tr className="new-filament-row">
+                                  <td colSpan="7">
+                                    <div className="new-filament-compact">
+                                      <strong style={{marginRight: '15px', fontSize: '13px'}}>New Filament:</strong>
+                                      <input
+                                        placeholder="Name *"
+                                        style={{width: '180px'}}
+                                        value={newFilamentData[idx]?.name || ''}
+                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), name: e.target.value}})}
+                                      />
+                                      <select
+                                        style={{width: '130px'}}
+                                        value={newFilamentData[idx]?.manufacturer || ''}
+                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), manufacturer: e.target.value}})}
+                                      >
+                                        <option value="">Manufacturer *</option>
+                                        {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                                      </select>
+                                      <select
+                                        style={{width: '100px'}}
+                                        value={newFilamentData[idx]?.material || 'PLA'}
+                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), material: e.target.value}})}
+                                      >
+                                        <option value="PLA">PLA</option>
+                                        <option value="PETG">PETG</option>
+                                        <option value="ABS">ABS</option>
+                                        <option value="TPU">TPU</option>
+                                        <option value="Nylon">Nylon</option>
+                                        <option value="ASA">ASA</option>
+                                      </select>
+                                      <input
+                                        placeholder="Color"
+                                        style={{width: '100px'}}
+                                        value={newFilamentData[idx]?.color || ''}
+                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), color: e.target.value}})}
+                                      />
+                                      <input
+                                        placeholder="Feature"
+                                        style={{width: '100px'}}
+                                        value={newFilamentData[idx]?.feature || ''}
+                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), feature: e.target.value}})}
+                                      />
+                                      <button
+                                        type="button"
+                                        className="btn btn-small btn-primary"
+                                        onClick={() => handleCreateNewFilament(idx)}
+                                      >
+                                        Create
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </td>
                 </tr>
