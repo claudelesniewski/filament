@@ -1104,7 +1104,13 @@ function PurchasesTab() {
               <th>Date</th>
               <th>Marketplace</th>
               <th>URL</th>
-              <th>Items</th>
+              <th>Filament</th>
+              <th>Seller</th>
+              <th>Spools</th>
+              <th>Kg/Spool</th>
+              <th>Price</th>
+              <th>Received</th>
+              <th>Shelf</th>
               <th>Subtotal</th>
               <th>Tax</th>
               <th>Total</th>
@@ -1114,257 +1120,179 @@ function PurchasesTab() {
           </thead>
           <tbody>
             {purchases.map(purchase => (
-              <tr key={purchase.id}>
-                <td>{purchase.date_ordered}</td>
-                <td>{purchase.marketplace}</td>
-                <td>
-                  {purchase.order_url ? (
-                    <a href={purchase.order_url} target="_blank" rel="noopener noreferrer" style={{color: '#667eea', textDecoration: 'none'}}>🔗</a>
-                  ) : (
-                    '-'
+              purchase.items.map((item, idx) => (
+                <tr key={`${purchase.id}-${idx}`}>
+                  {idx === 0 && (
+                    <>
+                      <td rowSpan={purchase.items.length}>{purchase.date_ordered}</td>
+                      <td rowSpan={purchase.items.length}>{purchase.marketplace}</td>
+                      <td rowSpan={purchase.items.length}>
+                        {purchase.order_url ? (
+                          <a href={purchase.order_url} target="_blank" rel="noopener noreferrer" style={{color: '#667eea', textDecoration: 'none'}}>🔗</a>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                    </>
                   )}
+                  <td>{item.filament_name}</td>
+                  <td>{item.seller}</td>
+                  <td>{item.spools}</td>
+                  <td>{item.kg_per_spool} kg</td>
+                  <td>${item.unit_price.toFixed(2)}</td>
+                  <td>{item.date_received || '-'}</td>
+                  <td>{item.shelf}</td>
+                  {idx === 0 && (
+                    <>
+                      <td rowSpan={purchase.items.length}>${purchase.subtotal.toFixed(2)}</td>
+                      <td rowSpan={purchase.items.length}>${purchase.tax.toFixed(2)}</td>
+                      <td rowSpan={purchase.items.length}><strong>${(purchase.subtotal + purchase.tax).toFixed(2)}</strong></td>
+                      <td rowSpan={purchase.items.length} style={{fontSize: '13px', color: '#718096'}}>{purchase.notes || '-'}</td>
+                      <td rowSpan={purchase.items.length} className="actions">
+                        <button className="btn btn-small btn-danger" onClick={() => handleDelete(purchase.id)} disabled={isAdding}>Delete</button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))
+            ))}
+            {isAdding && formData.items.map((item, idx) => (
+              <tr key={`new-${idx}`} className="editing-row new-row">
+                {idx === 0 && (
+                  <>
+                    <td rowSpan={formData.items.length + 1}>
+                      <input
+                        type="date"
+                        className="inline-input"
+                        value={formData.date_ordered}
+                        onChange={e => setFormData({...formData, date_ordered: e.target.value})}
+                        autoFocus
+                      />
+                    </td>
+                    <td rowSpan={formData.items.length + 1}>
+                      <input
+                        className="inline-input"
+                        placeholder="eBay, Amazon..."
+                        value={formData.marketplace}
+                        onChange={e => setFormData({...formData, marketplace: e.target.value})}
+                      />
+                    </td>
+                    <td rowSpan={formData.items.length + 1}>
+                      <input
+                        className="inline-input"
+                        placeholder="URL"
+                        value={formData.order_url}
+                        onChange={e => setFormData({...formData, order_url: e.target.value})}
+                      />
+                    </td>
+                  </>
+                )}
+                <td>
+                  <select
+                    className="inline-input"
+                    value={item.filament_name}
+                    onChange={e => updateItem(idx, 'filament_name', e.target.value)}
+                  >
+                    <option value="">Select...</option>
+                    {filaments.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                  </select>
                 </td>
-                <td>{purchase.items.length} item(s)</td>
-                <td>${purchase.subtotal.toFixed(2)}</td>
-                <td>${purchase.tax.toFixed(2)}</td>
-                <td><strong>${(purchase.subtotal + purchase.tax).toFixed(2)}</strong></td>
-                <td style={{fontSize: '13px', color: '#718096'}}>{purchase.notes || '-'}</td>
-                <td className="actions">
-                  <button className="btn btn-small btn-danger" onClick={() => handleDelete(purchase.id)} disabled={isAdding}>Delete</button>
+                <td>
+                  <input
+                    className="inline-input"
+                    value={item.seller}
+                    onChange={e => updateItem(idx, 'seller', e.target.value)}
+                    placeholder="Seller"
+                  />
                 </td>
+                <td>
+                  <input
+                    type="number"
+                    className="inline-input"
+                    value={item.spools}
+                    onChange={e => updateItem(idx, 'spools', parseInt(e.target.value) || 0)}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="inline-input"
+                    value={item.kg_per_spool}
+                    onChange={e => updateItem(idx, 'kg_per_spool', parseFloat(e.target.value) || 0)}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="inline-input"
+                    placeholder="0.00"
+                    value={item.unit_price}
+                    onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="date"
+                    className="inline-input"
+                    value={item.date_received}
+                    onChange={e => updateItem(idx, 'date_received', e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="inline-input"
+                    value={item.shelf}
+                    onChange={e => updateItem(idx, 'shelf', e.target.value)}
+                    placeholder="A1"
+                  />
+                </td>
+                {idx === 0 && (
+                  <>
+                    <td rowSpan={formData.items.length + 1}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="inline-input"
+                        placeholder="0.00"
+                        value={formData.subtotal}
+                        onChange={e => setFormData({...formData, subtotal: parseFloat(e.target.value) || 0})}
+                      />
+                    </td>
+                    <td rowSpan={formData.items.length + 1}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="inline-input"
+                        placeholder="0.00"
+                        value={formData.tax}
+                        onChange={e => setFormData({...formData, tax: parseFloat(e.target.value) || 0})}
+                      />
+                    </td>
+                    <td rowSpan={formData.items.length + 1}><strong>${(formData.subtotal + formData.tax).toFixed(2)}</strong></td>
+                    <td rowSpan={formData.items.length + 1}>
+                      <input
+                        className="inline-input"
+                        placeholder="Notes"
+                        value={formData.notes}
+                        onChange={e => setFormData({...formData, notes: e.target.value})}
+                      />
+                    </td>
+                    <td rowSpan={formData.items.length + 1} className="actions">
+                      <button className="btn btn-small btn-primary" onClick={handleSave}>Save</button>
+                      <button className="btn btn-small btn-secondary" onClick={handleCancel}>Cancel</button>
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
             {isAdding && (
-              <>
-                <tr className="editing-row new-row">
-                  <td>
-                    <input
-                      type="date"
-                      className="inline-input"
-                      value={formData.date_ordered}
-                      onChange={e => setFormData({...formData, date_ordered: e.target.value})}
-                      autoFocus
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="inline-input"
-                      placeholder="eBay, Amazon..."
-                      value={formData.marketplace}
-                      onChange={e => setFormData({...formData, marketplace: e.target.value})}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="inline-input"
-                      placeholder="URL"
-                      value={formData.order_url}
-                      onChange={e => setFormData({...formData, order_url: e.target.value})}
-                    />
-                  </td>
-                  <td>
-                    <span style={{color: '#718096', fontSize: '13px'}}>{formData.items.length} item(s)</span>
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="inline-input"
-                      placeholder="0.00"
-                      value={formData.subtotal}
-                      onChange={e => setFormData({...formData, subtotal: parseFloat(e.target.value) || 0})}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="inline-input"
-                      placeholder="0.00"
-                      value={formData.tax}
-                      onChange={e => setFormData({...formData, tax: parseFloat(e.target.value) || 0})}
-                    />
-                  </td>
-                  <td><strong>${(formData.subtotal + formData.tax).toFixed(2)}</strong></td>
-                  <td>
-                    <input
-                      className="inline-input"
-                      placeholder="Notes"
-                      value={formData.notes}
-                      onChange={e => setFormData({...formData, notes: e.target.value})}
-                    />
-                  </td>
-                  <td className="actions">
-                    <button className="btn btn-small btn-primary" onClick={handleSave}>Save</button>
-                    <button className="btn btn-small btn-secondary" onClick={handleCancel}>Cancel</button>
-                  </td>
-                </tr>
-                <tr className="purchase-items-row">
-                  <td colSpan="9">
-                    <div className="purchase-items-inline">
-                      <div style={{marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <strong>Purchase Items ({formData.items.length})</strong>
-                        <button type="button" className="btn btn-small btn-secondary" onClick={addItem}>+ Add Item</button>
-                      </div>
-                      <table className="items-table">
-                        <thead>
-                          <tr>
-                            <th style={{width: '20%'}}>Filament</th>
-                            <th style={{width: '15%'}}>Seller</th>
-                            <th style={{width: '8%'}}>Spools</th>
-                            <th style={{width: '10%'}}>Kg/Spool</th>
-                            <th style={{width: '10%'}}>Price</th>
-                            <th style={{width: '12%'}}>Received</th>
-                            <th style={{width: '10%'}}>Shelf</th>
-                            <th style={{width: '80px'}}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {formData.items.map((item, idx) => (
-                            <>
-                              <tr key={idx}>
-                                <td>
-                                  <div style={{display: 'flex', gap: '5px'}}>
-                                    <select
-                                      className="inline-input"
-                                      required={!showNewFilament[idx]}
-                                      style={{flex: 1, minWidth: 0}}
-                                      value={item.filament_name}
-                                      onChange={e => updateItem(idx, 'filament_name', e.target.value)}
-                                      disabled={showNewFilament[idx]}
-                                    >
-                                      <option value="">Select...</option>
-                                      {filaments.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                                    </select>
-                                    <button
-                                      type="button"
-                                      className="btn btn-small btn-secondary"
-                                      style={{whiteSpace: 'nowrap'}}
-                                      onClick={() => setShowNewFilament({...showNewFilament, [idx]: !showNewFilament[idx]})}
-                                    >
-                                      {showNewFilament[idx] ? '✕' : '+'}
-                                    </button>
-                                  </div>
-                                </td>
-                                <td>
-                                  <input
-                                    className="inline-input"
-                                    value={item.seller}
-                                    onChange={e => updateItem(idx, 'seller', e.target.value)}
-                                    placeholder="Seller"
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    type="number"
-                                    className="inline-input"
-                                    value={item.spools}
-                                    onChange={e => updateItem(idx, 'spools', parseInt(e.target.value) || 0)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    className="inline-input"
-                                    value={item.kg_per_spool}
-                                    onChange={e => updateItem(idx, 'kg_per_spool', parseFloat(e.target.value) || 0)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    className="inline-input"
-                                    placeholder="0.00"
-                                    value={item.unit_price}
-                                    onChange={e => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    type="date"
-                                    className="inline-input"
-                                    value={item.date_received}
-                                    onChange={e => updateItem(idx, 'date_received', e.target.value)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    className="inline-input"
-                                    value={item.shelf}
-                                    onChange={e => updateItem(idx, 'shelf', e.target.value)}
-                                    placeholder="A1"
-                                  />
-                                </td>
-                                <td>
-                                  {formData.items.length > 1 && (
-                                    <button type="button" className="btn btn-small btn-danger" onClick={() => removeItem(idx)}>✕</button>
-                                  )}
-                                </td>
-                              </tr>
-                              {showNewFilament[idx] && (
-                                <tr className="new-filament-row">
-                                  <td colSpan="8">
-                                    <div className="new-filament-compact">
-                                      <strong style={{marginRight: '15px', fontSize: '13px'}}>New Filament:</strong>
-                                      <input
-                                        placeholder="Name *"
-                                        style={{width: '180px'}}
-                                        value={newFilamentData[idx]?.name || ''}
-                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), name: e.target.value}})}
-                                      />
-                                      <select
-                                        style={{width: '130px'}}
-                                        value={newFilamentData[idx]?.manufacturer || ''}
-                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), manufacturer: e.target.value}})}
-                                      >
-                                        <option value="">Manufacturer *</option>
-                                        {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
-                                      </select>
-                                      <select
-                                        style={{width: '100px'}}
-                                        value={newFilamentData[idx]?.material || 'PLA'}
-                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), material: e.target.value}})}
-                                      >
-                                        <option value="PLA">PLA</option>
-                                        <option value="PETG">PETG</option>
-                                        <option value="ABS">ABS</option>
-                                        <option value="TPU">TPU</option>
-                                        <option value="Nylon">Nylon</option>
-                                        <option value="ASA">ASA</option>
-                                      </select>
-                                      <input
-                                        placeholder="Color"
-                                        style={{width: '100px'}}
-                                        value={newFilamentData[idx]?.color || ''}
-                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), color: e.target.value}})}
-                                      />
-                                      <input
-                                        placeholder="Feature"
-                                        style={{width: '100px'}}
-                                        value={newFilamentData[idx]?.feature || ''}
-                                        onChange={e => setNewFilamentData({...newFilamentData, [idx]: {...(newFilamentData[idx] || {}), feature: e.target.value}})}
-                                      />
-                                      <button
-                                        type="button"
-                                        className="btn btn-small btn-primary"
-                                        onClick={() => handleCreateNewFilament(idx)}
-                                      >
-                                        Create
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </td>
-                </tr>
-              </>
+              <tr className="editing-row new-row">
+                <td colSpan="7" style={{textAlign: 'center', padding: '8px'}}>
+                  <button type="button" className="btn btn-small btn-secondary" onClick={addItem}>+ Add Item</button>
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
