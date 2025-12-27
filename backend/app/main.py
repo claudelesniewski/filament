@@ -1,5 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException
+import os
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -24,15 +27,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Root endpoint
-@app.get("/")
-def read_root():
-    return {
-        "message": "Filament Inventory API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+# Serve static files in production
+static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
+if os.path.exists(static_dir):
+    app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
 
 
 # Vendor endpoints
@@ -238,3 +236,14 @@ def delete_spool(spool_id: int, db: Session = Depends(get_db)):
 def get_inventory_summary(db: Session = Depends(get_db)):
     """Get inventory summary showing total purchased, opened, and remaining kg for each filament"""
     return crud.get_inventory_summary(db)
+
+
+# Catch-all route for SPA in production
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Serve the SPA index.html for any unmatched routes in production"""
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "Filament Inventory API", "version": "1.0.0", "docs": "/docs"}

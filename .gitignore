@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.pythonlibs/
 env/
 venv/
 ENV/
@@ -37,4 +38,7 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 .pnpm-store/
-dist/
+
+# Replit
+.upm/
+.cache/
