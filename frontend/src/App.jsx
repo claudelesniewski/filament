@@ -161,6 +161,8 @@ function VendorsTab() {
   const [vendors, setVendors] = useState([])
   const [editingId, setEditingId] = useState(null)
   const [isAdding, setIsAdding] = useState(false)
+  const [sortField, setSortField] = useState('name')
+  const [sortDirection, setSortDirection] = useState('asc')
   const [formData, setFormData] = useState({ name: '', notes: '' })
 
   useEffect(() => {
@@ -201,6 +203,27 @@ function VendorsTab() {
     setEditingId(null)
     setIsAdding(false)
     setFormData({ name: '', notes: '' })
+  }
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const getSortedVendors = () => {
+    return [...vendors].sort((a, b) => {
+      let aVal = a[sortField] || ''
+      let bVal = b[sortField] || ''
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase()
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
   }
 
   const handleDelete = async (id) => {
@@ -295,13 +318,13 @@ function VendorsTab() {
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Notes</th>
+              <th onClick={() => handleSort('name')}>Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('notes')}>Notes {sortField === 'notes' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {vendors.map(vendor => (
+            {getSortedVendors().map(vendor => (
               <tr key={vendor.id} className={editingId === vendor.id ? 'editing-row' : ''}>
                 <td>
                   {editingId === vendor.id ? (
@@ -380,6 +403,8 @@ function FilamentsTab() {
   const [inventoryMap, setInventoryMap] = useState({})
   const [editingId, setEditingId] = useState(null)
   const [isAdding, setIsAdding] = useState(false)
+  const [sortField, setSortField] = useState('name')
+  const [sortDirection, setSortDirection] = useState('asc')
   const [formData, setFormData] = useState({
     name: '',
     manufacturer: '',
@@ -428,6 +453,40 @@ function FilamentsTab() {
     } catch (error) {
       console.error('Error loading inventory:', error)
     }
+  }
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const getSortedFilaments = () => {
+    return [...filaments].sort((a, b) => {
+      let aVal = a[sortField]
+      let bVal = b[sortField]
+
+      // Handle total purchased kg
+      if (sortField === 'total_purchased_kg') {
+        aVal = inventoryMap[a.name] || 0
+        bVal = inventoryMap[b.name] || 0
+      }
+
+      // Handle null/undefined
+      if (aVal == null) aVal = ''
+      if (bVal == null) bVal = ''
+
+      // Convert to lowercase for string comparison
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase()
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
   }
 
   const handleEdit = (filament) => {
@@ -610,20 +669,20 @@ function FilamentsTab() {
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Manufacturer</th>
-              <th>Line</th>
-              <th>Product</th>
-              <th>Material</th>
-              <th>Color</th>
-              <th>Feature</th>
-              <th>Total Purchased (kg)</th>
-              <th>Date Added</th>
+              <th onClick={() => handleSort('name')}>Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('manufacturer')}>Manufacturer {sortField === 'manufacturer' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('line')}>Line {sortField === 'line' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('product')}>Product {sortField === 'product' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('material')}>Material {sortField === 'material' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('color')}>Color {sortField === 'color' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('feature')}>Feature {sortField === 'feature' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('total_purchased_kg')}>Total Purchased (kg) {sortField === 'total_purchased_kg' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+              <th onClick={() => handleSort('date_added')}>Date Added {sortField === 'date_added' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filaments.map(filament => (
+            {getSortedFilaments().map(filament => (
               <tr key={filament.id} className={editingId === filament.id ? 'editing-row' : ''}>
                 <td>
                   {editingId === filament.id ? (
@@ -1170,12 +1229,13 @@ function PurchasesTab() {
             </tr>
           </thead>
           <tbody>
-            {purchases.map(purchase => {
+            {purchases.map((purchase, purchaseIdx) => {
               const isEditing = editingId === purchase.id
               const displayItems = isEditing ? formData.items : purchase.items
+              const purchaseClass = purchaseIdx % 2 === 0 ? 'purchase-even' : 'purchase-odd'
 
               return displayItems.map((item, idx) => (
-                <tr key={`${purchase.id}-${idx}`} className={isEditing ? 'editing-row' : ''}>
+                <tr key={`${purchase.id}-${idx}`} className={isEditing ? 'editing-row' : purchaseClass}>
                   {idx === 0 && (
                     <>
                       <td rowSpan={displayItems.length}>
