@@ -393,6 +393,8 @@ function FilamentsTab() {
             <tr>
               <th>Name</th>
               <th>Manufacturer</th>
+              <th>Line</th>
+              <th>Product</th>
               <th>Material</th>
               <th>Color</th>
               <th>Feature</th>
@@ -427,6 +429,28 @@ function FilamentsTab() {
                     </select>
                   ) : (
                     filament.manufacturer
+                  )}
+                </td>
+                <td>
+                  {editingId === filament.id ? (
+                    <input
+                      className="inline-input"
+                      value={formData.line}
+                      onChange={e => setFormData({...formData, line: e.target.value})}
+                    />
+                  ) : (
+                    filament.line
+                  )}
+                </td>
+                <td>
+                  {editingId === filament.id ? (
+                    <input
+                      className="inline-input"
+                      value={formData.product}
+                      onChange={e => setFormData({...formData, product: e.target.value})}
+                    />
+                  ) : (
+                    filament.product
                   )}
                 </td>
                 <td>
@@ -517,6 +541,22 @@ function FilamentsTab() {
                     <option value="">Select...</option>
                     {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
                   </select>
+                </td>
+                <td>
+                  <input
+                    className="inline-input"
+                    placeholder="Line"
+                    value={formData.line}
+                    onChange={e => setFormData({...formData, line: e.target.value})}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="inline-input"
+                    placeholder="Product"
+                    value={formData.product}
+                    onChange={e => setFormData({...formData, product: e.target.value})}
+                  />
                 </td>
                 <td>
                   <select
@@ -758,10 +798,12 @@ function PurchasesTab() {
             <tr>
               <th>Date</th>
               <th>Marketplace</th>
+              <th>URL</th>
               <th>Items</th>
               <th>Subtotal</th>
               <th>Tax</th>
               <th>Total</th>
+              <th>Notes</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -770,10 +812,18 @@ function PurchasesTab() {
               <tr key={purchase.id}>
                 <td>{purchase.date_ordered}</td>
                 <td>{purchase.marketplace}</td>
+                <td>
+                  {purchase.order_url ? (
+                    <a href={purchase.order_url} target="_blank" rel="noopener noreferrer" style={{color: '#667eea', textDecoration: 'none'}}>🔗</a>
+                  ) : (
+                    '-'
+                  )}
+                </td>
                 <td>{purchase.items.length} item(s)</td>
                 <td>${purchase.subtotal.toFixed(2)}</td>
                 <td>${purchase.tax.toFixed(2)}</td>
                 <td><strong>${(purchase.subtotal + purchase.tax).toFixed(2)}</strong></td>
+                <td style={{fontSize: '13px', color: '#718096'}}>{purchase.notes || '-'}</td>
                 <td className="actions">
                   <button className="btn btn-small btn-danger" onClick={() => handleDelete(purchase.id)} disabled={isAdding}>Delete</button>
                 </td>
@@ -800,6 +850,14 @@ function PurchasesTab() {
                     />
                   </td>
                   <td>
+                    <input
+                      className="inline-input"
+                      placeholder="URL"
+                      value={formData.order_url}
+                      onChange={e => setFormData({...formData, order_url: e.target.value})}
+                    />
+                  </td>
+                  <td>
                     <span style={{color: '#718096', fontSize: '13px'}}>{formData.items.length} item(s)</span>
                   </td>
                   <td>
@@ -823,13 +881,21 @@ function PurchasesTab() {
                     />
                   </td>
                   <td><strong>${(formData.subtotal + formData.tax).toFixed(2)}</strong></td>
+                  <td>
+                    <input
+                      className="inline-input"
+                      placeholder="Notes"
+                      value={formData.notes}
+                      onChange={e => setFormData({...formData, notes: e.target.value})}
+                    />
+                  </td>
                   <td className="actions">
                     <button className="btn btn-small btn-primary" onClick={handleSave}>Save</button>
                     <button className="btn btn-small btn-secondary" onClick={handleCancel}>Cancel</button>
                   </td>
                 </tr>
                 <tr className="purchase-items-row">
-                  <td colSpan="7">
+                  <td colSpan="9">
                     <div className="purchase-items-inline">
                       <div style={{marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                         <strong>Purchase Items ({formData.items.length})</strong>
@@ -838,7 +904,8 @@ function PurchasesTab() {
                       <table className="items-table">
                         <thead>
                           <tr>
-                            <th style={{width: '25%'}}>Filament</th>
+                            <th style={{width: '20%'}}>Filament</th>
+                            <th style={{width: '15%'}}>Seller</th>
                             <th style={{width: '8%'}}>Spools</th>
                             <th style={{width: '10%'}}>Kg/Spool</th>
                             <th style={{width: '10%'}}>Price</th>
@@ -873,6 +940,14 @@ function PurchasesTab() {
                                       {showNewFilament[idx] ? '✕' : '+'}
                                     </button>
                                   </div>
+                                </td>
+                                <td>
+                                  <input
+                                    className="inline-input"
+                                    value={item.seller}
+                                    onChange={e => updateItem(idx, 'seller', e.target.value)}
+                                    placeholder="Seller"
+                                  />
                                 </td>
                                 <td>
                                   <input
@@ -925,7 +1000,7 @@ function PurchasesTab() {
                               </tr>
                               {showNewFilament[idx] && (
                                 <tr className="new-filament-row">
-                                  <td colSpan="7">
+                                  <td colSpan="8">
                                     <div className="new-filament-compact">
                                       <strong style={{marginRight: '15px', fontSize: '13px'}}>New Filament:</strong>
                                       <input
